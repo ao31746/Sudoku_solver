@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>數獨</title>
+		<meta charset="utf-8">	
+		<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+		<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+		<script src="plugin/sweetalert-master/dist/sweetalert.min.js"></script> 
+		<link rel="stylesheet" type="text/css" href="plugin/sweetalert-master/dist/sweetalert.css">
+		
+		
+<script type="text/javascript" src="https://cdn.datatables.net/t/bs/jq-2.2.0,dt-1.10.11/datatables.min.js"></script><script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-58080447-2', 'auto');
+  ga('send', 'pageview');
+
+</script>
+	</head>
+		<style>
+			table{
+				border: solid;
+			}
+			td{
+				border: thin;
+				padding: 0;
+				text-align:center
+			}
+			input[type=text]{
+			   height:30px; 
+			   line-height:30px;
+			   width: 30px;
+			   text-align:center;
+			   size:1;
+			}
+			input:focus,input:hover { 
+			    background-color: lightgray;
+			}
+			tr.border_bottom td {
+			  	border-bottom:2pt solid black;
+			}
+			.border_right{
+				border-right:2pt solid black;
+			}
+		</style>
+	<script >
+	/*
+		array means value which has find been out or is setted
+		process means blank's possible value
+
+	*/
+	var array=[];
+	var process=[];
+	var MyRows;
+	
+		function prepareLinks(){//initiate value
+			location.reload();
+		}
+		//if the value is in the same block
+		function sameBlock(i,j){
+			//i%9/3,0 1 2&& i/27 0 1 2
+			var val=true;
+			var col=Math.floor(i%9/3);
+			var row=Math.floor(i/27);
+			if(Math.floor(j/27)!=row){
+				val=false;
+			}else if(Math.floor(j%9/3)!=col){
+				val=false;
+			}
+			return val;
+		}
+		function ini(){
+			var counter=0;
+			MyRows = $('table#mainTable').find('tbody').find('tr');
+
+				
+				for (var i = 0; i < MyRows.length; i++) {
+					var MyIndexValue = $(MyRows[i]).find('input');
+					for (var j = 0; j < MyIndexValue.length; j++) {
+						//have value(1~9)
+						if(array[counter]!=0){
+							$(MyIndexValue[j]).val(array[counter]);
+							$(MyIndexValue[j]).attr('disabled','disabled');							
+							process[counter]=[true];	
+					
+						}
+
+						//does not have value(0)
+						else{
+							$(MyIndexValue[j]).attr('maxlength',1);
+							process[counter]=[false,false,false,false,false,false,false,false,false,false,9];
+						}
+						//set id
+						$(MyIndexValue[j]).attr('id',counter);						
+						counter++;
+					}					
+				}//end for						
+		}
+		
+		//have answer return false
+		function vertify(){
+			var ver=false;
+			for(var i=0;i<array.length;i++){
+				if(array[i]==0){
+					ver=true;
+					break;
+				}
+			}
+			return ver;
+		}
+		function startProcess(){
+			var flag=true;
+			//an easy method
+			//have some value change need to restart process again
+			while(flag){
+				flag=false;
+				for(var i=0;i<process.length;i++){
+					if(process[i][0]){
+						//rowNum is "row" 
+						//colNum is "col"
+						var rowNum=Math.floor(i/9)+1;
+						var colNum=(i%9)+1;
+						//console.log("Number"+i+",row:"+rowNum+",col:"+colNum);
+						for(var j=0;j<process.length;j++){
+							var x=Math.floor(j/9)+1;
+							var y=(j%9)+1;
+							if((!process[j][0])&&(x==rowNum||y==colNum||sameBlock(i,j))){
+								if(!process[j][array[i]]){
+									process[j][10]--;
+									process[j][array[i]]=true;
+									//console.log("set"+j+",row:"+x+",col:"+y+"remain:"+process[j][10]);
+								}
+							}
+						}//end for
+					}//end if				
+				}//end for
+				
+				//process have value which have only one option
+				for(var i=0;i<process.length;i++){
+					//console.log(process[i][0]);
+					if((!process[i][0])&&(process[i][10]==1)){
+						for(var j=1;j<10;j++){
+							//revalue the change value
+							if(!process[i][j]){
+								//console.log("first"+i+","+j);
+								flag=true;
+								$("#"+i).val(j);
+								$("#"+i).css("background-color","yellow");
+								process[i][0]=true;
+								process[i][j]=true;
+								array[i]=j;
+								break;
+							}
+						}	
+						break;						
+					}
+				}//end for				
+			}//end while
+									
+			//a difficult method 
+			//use stack to process value						
+			var flag1=vertify(); // 確認是否找到答案
+			if(vertify){
+				var guess=true;	//是否有猜過數字
+				var stack=new Array();
+				var stack2=new Array();
+				var startNumb=0;
+				var startValue=1;
+				var haveSet;	//stack1 split
+				var haveSet1;	//stack2 split
+				var possible=false;	//找到猜的值
+				var sta;	
+				var countx=0;	
+				var countx1=0;	
+				var flag3=false;
+				var flag5=false;
+				var test=1;
+				for(var i=startNumb;i<process.length;i++){
+							if((!process[i][0])){
+								for(var j=startValue;j<10;j++){
+									//revalue the change value
+									if(!process[i][j]){
+										$("#"+i).val(j);
+										$("#"+i).css("color","red");
+										stack.push(i+","+j);
+										array[i]=j;				
+										break;
+									}
+								}
+								break;
+							}
+						}//end for
+					//var count=150;
+				while(flag1){
+					//&&count>0
+					//count--;
+					flag1=false;
+					
+					//挑可能數字
+					//********第一次不進去************
+						var count=82;
+					while(possible&&count>0){
+						count--;
+						guess=true;	
+						
+						//pop stack繼續往下猜，猜到底無解
+					
+							if(flag3){
+								console.log("syat");
+								if(stack.length==0){
+									possible=false;
+									flag1=false;									
+									break;
+								}
+								var pop0=stack.pop();
+								var fir=parseInt(pop0.split(",")[0]);
+								var sec=parseInt(pop0.split(",")[1]);
+									
+								startValue=sec+1;
+								startNumb=0;
+
+								console.log(fir+","+sec+","+startNumb+","+startValue);
+								$("#"+fir).val("");
+								array[fir]=0;
+
+								if(stack2.length!=0){
+									var pop2=stack2.pop();
+									while(pop2!="aSet"){
+										var fir2=parseInt(pop2.split(",")[0]);
+										var sec2=parseInt(pop2.split(",")[1]);
+										array[fir2]=0;
+										$("#"+fir2).val("");
+										pop2=stack2.pop();
+									}
+								}//end if stack2 empty statement
+								
+							}//end if
+							//不pop stack2往下來猜
+							else{
+								
+								console.log("no pop");
+								for(var i=0;i<array.length;i++){
+									if(array[i]==0){
+										startNumb=array[i];
+									}
+								}
+								startValue=1;
+							}
+
+								processPossible();
+
+									for(var i=startNumb;i<process.length;i++){
+										if((!process[i][0])){											
+											for(var j=startValue;j<10;j++){
+												if(!process[i][j]){
+													$("#"+i).val(j);
+													$("#"+i).css("color","red");
+													stack.push(i+","+j);												
+													array[i]=j;
+													possible=false;
+													flag3=false;
+													flag5=true;
+													console.log("guess,"+j);
+													break;
+												}
+											}
+											break;
+										}										
+									}//end for	
+									if(!flag5){
+										flag3=true;
+										console.log("here")
+									}										
+					}//end guess while
+
+
+
+					//可能數字處理
+					var flag2=true;		//有找到新的值
+					haveSet=true;
+					haveSet1=true;
+
+					//var count=20;
+					console.log("stack:");
+					console.log(stack);
+
+					while(flag2){
+						//&&count>0
+						//count--;						
+
+						
+						flag2=false;
+						if(guess){
+							sta=parseInt(stack[stack.length-1].split(",")[0]);
+						}else{
+							sta=parseInt(stack2[stack2.length-1].split(",")[0]);	
+						}
+						guess=false;
+						//rowNum is "row" 
+						//colNum is "col"
+
+												
+						processPossible();
+						console.log("end guess:");
+						console.log(process);
+						//處理得到值
+						//process have value which have only one option
+						//countx1++;
+						for(var i=0;i<process.length;i++){
+							if((!process[i][0])&&(process[i][10]==1)){
+								for(var j=1;j<10;j++){
+									if(!process[i][j]){
+										if(haveSet1)
+											stack2.push("aSet");
+										haveSet1=false;
+										$("#"+i).val(j);
+										//countx1+","+j
+										$("#"+i).css("color","blue");
+										sta=i;
+										stack2.push(i+","+j);
+										array[i]=j;
+										flag2=true;
+										break;
+									}
+								}
+							}
+						}//end for
+
+
+						console.log("stack2:");
+						console.log(stack2);
+						if(checkIfSuit()){
+							console.log("guess true");
+						}
+						else{
+							console.log(stack);
+							console.log("guess wrong");
+							flag3=true;		//pop stack
+							flag2=false;	//不繼續往下猜
+						}
+					}//end while
+
+					//do not find answer
+					if(vertify()){
+						flag1=true;		
+						possible=true;				
+					}				
+				}//end while	
+			}//end if	
+
+			function iniP(){
+				for(var z=0;z<process.length;z++){
+					if(process[z].length==1||array[z]!=0){
+						if(process[z].length!=1){
+							process[z][0]=true;
+						}
+					}
+					else{
+						process[z][10]=9;
+						for(var k=0;k<10;k++)
+							process[z][k]=false;
+						}
+					}				
+			}
+
+			function processPossible(){
+				iniP();
+							
+					for(var i=0;i<process.length;i++){
+						var rowNum=Math.floor(i/9)+1;
+						var colNum=(i%9)+1;
+						for(var j=0;j<process.length;j++){
+							var x=Math.floor(j/9)+1;
+							var y=(j%9)+1;
+							if((process[i][0])&&((x==rowNum||y==colNum)||sameBlock(i,j))){
+								if(!process[j][array[i]]){
+									process[j][array[i]]=true;
+									process[j][10]--;
+								}
+								
+							}
+						}//end for						
+					}
+					
+			}
+
+			
+			function checkIfSuit(){
+				var re=true;
+				var c=stack2.length-1;
+				var checkFlag=true;
+				while(stack2[c]!="aSet"&&c>=0&&checkFlag){
+					var position=parseInt(stack2[c].split(",")[0]);
+					var valu=parseInt(stack2[c].split(",")[1]);
+					var chrowNum=Math.floor(position/9)+1;
+					var chcolNum=(position%9)+1;
+					for(var j=0;j<process.length;j++){
+							if(position==j){
+								continue;
+							}else{
+								var x=Math.floor(j/9)+1;
+								var y=(j%9)+1;
+								if((process[j][0])&&((x==chrowNum||y==chcolNum)||sameBlock(position,j))){
+									if(valu==array[j]){
+										re=false;
+										checkFlag=false;
+										console.log("fir."+position+","+valu+"sec."+j+","+array[j]);
+										break;
+									}									
+								}
+							}
+						}//end for
+					if(!checkFlag)
+						break;
+					c--;
+				}//end while
+				return re;
+			}
+		}
+
+		function newN(){
+
+			swal({   title: "try a new sudoku ?",   text: "new sudoku",   type: "warning",   showCancelButton: true,   confirmButtonColor: "#DD6B55",   confirmButtonText: "Yes, try it!",   closeOnConfirm: false }, function(){   prepareLinks(); });
+			/*if(confirm("try a new sudoku ?"))
+				prepareLinks();
+				*/
+		}
+		function start(){
+			//if(confirm("start ?"))
+				startProcess();
+		}
+		function randomSample(){
+			$("#random").attr('disabled','disabled');
+			var ran=[];
+			ran[0]=[9,5,0,6,1,0,3,0,7,0,0,8,3,4,7,9,0,0,0,0,0,9,5,0,6,1,8,5,9,0,2,8,0,4,7,3,2,8,0,0,7,3,0,0,6,4,7,0,5,0,0,2,0,1,0,0,9,0,6,5,0,3,0,8,6,0,7,0,4,0,2,0,7,3,4,1,2,9,8,6,5];
+			ran[1]=[0,2,8,1,5,4,0,0,7,1,7,9,0,0,0,5,4,8,0,0,6,8,7,9,2,0,3,2,1,7,6,0,0,0,9,0,0,3,0,2,4,1,0,8,0,0,6,0,0,0,5,3,2,1,5,0,2,9,6,7,1,0,0,6,4,3,0,0,0,8,7,9,7,0,0,4,8,3,6,5,0];
+			ran[2]=[0,4,0,0,5,0,0,1,7,0,0,5,1,9,0,6,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,6,5,0,0,0,9,0,1,0,0,0,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,6,0,8,5,7,0,0,9,8,0,0,3,0,0,4,0];
+			ran[3]=[0,3,2,0,0,0,0,4,0,5,0,0,0,0,9,0,8,0,0,0,0,0,0,1,0,7,0,9,0,6,0,5,0,0,0,0,0,0,1,0,4,0,9,0,0,0,0,0,0,2,0,7,0,8,0,8,0,6,0,0,0,0,0,0,1,0,7,0,0,0,0,2,0,4,0,0,0,0,1,3,0];
+			ran[4]=[0,1,0,0,0,0,0,0,0,0,0,7,0,1,0,8,0,0,0,0,0,0,0,0,0,1,6,8,0,0,1,0,0,0,2,5,0,0,2,3,0,8,6,0,0,4,3,0,0,0,5,0,0,9,1,5,0,0,0,0,0,0,0,0,0,4,0,9,0,1,0,0,0,0,0,0,0,0,0,7,0];
+			//array=ran[4];
+			array=ran[Math.floor(Math.random()*3)];
+			ini();
+		}
+	</script>
+
+	<body>
+		<p> 1.請按'隨機數獨'來開始<br>
+			2.請按'開始處理'開始解答<br>
+			3.請按'重新開始'來重新開始<br>
+		
+			<hr>
+		   這是數獨自動解答程式<br>
+		   黃底黑字代表可以從題目判斷出來的數字<br>
+		   紅字代表需要猜的數字<br>
+		   藍字代表由猜得出數字推出來的數字
+		</p>
+		<table id="mainTable">
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr class="border_bottom">
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr class="border_bottom">
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+			<tr>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td class="border_right"><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+				<td><input type=text></td>
+			</tr>
+		</table>		
+
+		<button onclick="newN()">重新開始</button>
+		<button onclick="randomSample()" id="random">隨機數獨</button>
+		<button onclick="start()">開始處理</button>
+
+		
+		
+		
+		
+	</body>
+	
+	
+	
+	<style>div.container {
+        width: 80%;
+    }
+    }</style>
+</html>
+
